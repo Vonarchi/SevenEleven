@@ -1,5 +1,6 @@
 import { PageShell } from "@/components/ui/PageShell";
 import { Button } from "@/components/ui/Button";
+import { getCheckoutItem } from "@/lib/store/catalog";
 
 const perks = [
   "Daily coin drops",
@@ -10,6 +11,8 @@ const perks = [
 ];
 
 export default function VipPage() {
+  const vip = getCheckoutItem("vip-monthly");
+
   return (
     <PageShell
       title="VIP membership"
@@ -25,10 +28,12 @@ export default function VipPage() {
             Stripe Billing manages renewals. Coins from VIP drops are credited via
             server webhooks — never trust the client wallet.
           </p>
-          <Button className="mt-8 px-8 py-3 text-base">Start VIP checkout</Button>
-          <p className="mt-3 text-xs text-zinc-500">
-            {/* TODO: Stripe subscription checkout + customer portal */}
-          </p>
+          <form action="/api/checkout" method="post" className="mt-8">
+            <input type="hidden" name="itemKey" value={vip?.key ?? "vip-monthly"} />
+            <Button type="submit" className="px-8 py-3 text-base">
+              Start VIP checkout
+            </Button>
+          </form>
         </div>
         <ul className="space-y-3 rounded-2xl border border-white/10 bg-zinc-900/40 p-6">
           {perks.map((perk) => (

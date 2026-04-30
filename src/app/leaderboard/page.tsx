@@ -1,10 +1,11 @@
-import { LeaderboardList, type LeaderboardRow } from "@/components/leaderboard/LeaderboardList";
+import { LeaderboardList } from "@/components/leaderboard/LeaderboardList";
 import { PageShell } from "@/components/ui/PageShell";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { mockLeaderboard } from "@/lib/mock-data";
+import { getDailyLeaderboard, getSupabaseUser } from "@/lib/data";
 
-export default function LeaderboardPage() {
-  const rows: LeaderboardRow[] = mockLeaderboard;
+export default async function LeaderboardPage() {
+  const { user } = await getSupabaseUser();
+  const rows = await getDailyLeaderboard(user?.id);
 
   return (
     <PageShell

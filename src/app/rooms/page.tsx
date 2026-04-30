@@ -3,10 +3,10 @@ import { RoomList } from "@/components/room-list/RoomList";
 import { PageShell } from "@/components/ui/PageShell";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { mockRooms } from "@/lib/mock-data";
+import { getPublicRooms } from "@/lib/data";
 
-export default function RoomsPage() {
-  const rooms = mockRooms;
+export default async function RoomsPage() {
+  const rooms = await getPublicRooms();
 
   return (
     <PageShell
@@ -15,7 +15,7 @@ export default function RoomsPage() {
     >
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-zinc-500">
-          Showing mock data until Supabase realtime is connected.
+          Showing live public rooms from Supabase.
         </p>
         <Link href="/rooms/new">
           <Button className="w-full sm:w-auto">Create room</Button>

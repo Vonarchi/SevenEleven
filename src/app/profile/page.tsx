@@ -1,9 +1,11 @@
 import { PageShell } from "@/components/ui/PageShell";
-import { createClient } from "@/lib/supabase/server";
+import { getProfile, getSupabaseUser, getWalletBalance } from "@/lib/data";
 
 export default async function ProfilePage() {
-  const supabase = await createClient();
-  const user = supabase ? (await supabase.auth.getUser()).data.user : null;
+  const { user } = await getSupabaseUser();
+  const [profile, balance] = user
+    ? await Promise.all([getProfile(user.id), getWalletBalance(user.id)])
+    : [null, 0] as const;
 
   return (
     <PageShell
@@ -14,18 +16,18 @@ export default async function ProfilePage() {
         <div className="rounded-2xl border border-white/10 bg-zinc-900/50 p-6">
           <p className="text-xs uppercase tracking-wide text-zinc-500">Player</p>
           <p className="mt-2 text-2xl font-semibold">
-            {user?.user_metadata?.full_name ?? user?.email ?? "Player"}
+            {profile?.username ?? user?.user_metadata?.full_name ?? user?.email ?? "Player"}
           </p>
           <p className="mt-1 font-mono text-xs text-zinc-500">{user?.id}</p>
         </div>
         <div className="rounded-2xl border border-white/10 bg-zinc-900/50 p-6">
           <p className="text-xs uppercase tracking-wide text-zinc-500">Progression</p>
-          <p className="mt-3 text-sm text-zinc-400">
-            Level, XP, and equipped dice skin will load from `profiles` and
-            `user_cosmetics`.
+          <p className="mt-3 text-3xl font-semibold text-amber-100">
+            Level {profile?.level ?? 1}
           </p>
-          <p className="mt-4 text-xs text-zinc-500">
-            {/* TODO: Graph wins/losses/streaks from matches + leaderboards_daily */}
+          <p className="mt-2 text-sm text-zinc-400">
+            {profile?.xp ?? 0} XP · {balance.toLocaleString()} coins ·{" "}
+            {profile?.vip_status ? "VIP active" : "Standard profile"}
           </p>
         </div>
       </div>

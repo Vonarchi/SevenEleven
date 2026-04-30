@@ -3,13 +3,14 @@ import { SiteHeader } from "@/components/layout/SiteHeader";
 import { Button } from "@/components/ui/Button";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { isSupabaseConfigured } from "@/lib/env";
+import { authenticate } from "@/app/auth/actions";
 
 export default async function AuthPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string }>;
+  searchParams: Promise<{ next?: string; error?: string; notice?: string }>;
 }) {
-  const { next } = await searchParams;
+  const { next, error, notice } = await searchParams;
   const configured = isSupabaseConfigured();
 
   return (
@@ -28,7 +29,14 @@ export default async function AuthPage({
             message="Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to .env.local (see .env.local.example). Without keys, middleware skips auth and protected routes stay reachable for local UI work."
           />
         ) : null}
-        <form className="flex flex-col gap-4 rounded-2xl border border-white/10 bg-zinc-900/40 p-6">
+        {error ? <ErrorState title="Sign-in failed" message={error} /> : null}
+        {notice ? (
+          <div className="rounded-2xl border border-amber-400/20 bg-amber-500/10 p-4 text-sm text-amber-100">
+            {notice}
+          </div>
+        ) : null}
+        <form action={authenticate} className="flex flex-col gap-4 rounded-2xl border border-white/10 bg-zinc-900/40 p-6">
+          <input type="hidden" name="next" value={next ?? "/lobby"} />
           <label className="flex flex-col gap-2 text-sm">
             <span className="text-zinc-300">Email</span>
             <input
@@ -45,18 +53,20 @@ export default async function AuthPage({
             <input
               type="password"
               name="password"
+              required
               disabled={!configured}
               className="rounded-xl border border-white/10 bg-zinc-950 px-3 py-2 text-zinc-100 outline-none ring-amber-400/0 transition focus:ring-2 focus:ring-amber-400/40 disabled:opacity-50"
               placeholder="••••••••"
             />
           </label>
-          <Button type="submit" className="mt-2 w-full py-3" disabled={!configured}>
-            Continue
-          </Button>
-          <p className="text-center text-xs text-zinc-500">
-            {/* TODO: Wire Supabase Auth (magic link or password) via server action */}
-            Form submit is not yet connected to Supabase in this scaffold.
-          </p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Button type="submit" name="intent" value="sign-in" className="mt-2 w-full py-3" disabled={!configured}>
+              Sign in
+            </Button>
+            <Button type="submit" name="intent" value="sign-up" variant="ghost" className="mt-2 w-full py-3" disabled={!configured}>
+              Create account
+            </Button>
+          </div>
         </form>
         <p className="text-center text-sm text-zinc-500">
           After sign-in you&apos;ll return to{" "}

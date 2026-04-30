@@ -1,7 +1,7 @@
 import { DiceTable } from "@/components/dice-table/DiceTable";
 import { MatchStatusBanner } from "@/components/match-status/MatchStatusBanner";
 import { PageShell } from "@/components/ui/PageShell";
-import { mockRooms } from "@/lib/mock-data";
+import { getRoomByCode } from "@/lib/data";
 import { notFound } from "next/navigation";
 
 export default async function PlayPage({
@@ -10,9 +10,7 @@ export default async function PlayPage({
   params: Promise<{ roomCode: string }>;
 }) {
   const { roomCode } = await params;
-  const room = mockRooms.find(
-    (r) => r.roomCode.toLowerCase() === decodeURIComponent(roomCode).toLowerCase(),
-  );
+  const room = await getRoomByCode(roomCode);
 
   if (!room) {
     notFound();

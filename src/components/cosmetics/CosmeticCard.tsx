@@ -17,9 +17,11 @@ const rarityStyle: Record<CosmeticItem["rarity"], string> = {
 export function CosmeticCard({
   item,
   owned,
+  unlockAction,
 }: {
   item: CosmeticItem;
   owned?: boolean;
+  unlockAction?: (formData: FormData) => void | Promise<void>;
 }) {
   return (
     <div
@@ -38,9 +40,12 @@ export function CosmeticCard({
       <p className="mt-2 text-sm text-amber-200/90">
         {item.priceCoins.toLocaleString()} coins
       </p>
-      <Button className="mt-4 w-full" disabled={owned}>
-        {owned ? "Owned" : "Unlock"}
-      </Button>
+      <form action={unlockAction} className="mt-4">
+        <input type="hidden" name="cosmeticId" value={item.id} />
+        <Button type="submit" className="w-full" disabled={owned || !unlockAction}>
+          {owned ? "Owned" : "Unlock"}
+        </Button>
+      </form>
     </div>
   );
 }
