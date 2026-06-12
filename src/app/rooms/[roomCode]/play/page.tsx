@@ -2,6 +2,7 @@ import { DiceTable } from "@/components/dice-table/DiceTable";
 import { MatchStatusBanner } from "@/components/match-status/MatchStatusBanner";
 import { PageShell } from "@/components/ui/PageShell";
 import { getRoomByCode } from "@/lib/data";
+import { isSupabaseConfigured } from "@/lib/env";
 import { notFound } from "next/navigation";
 
 export default async function PlayPage({
@@ -22,7 +23,10 @@ export default async function PlayPage({
       subtitle="Cinematic dice surface with server-confirmed outcomes."
     >
       <MatchStatusBanner phase="opening" />
-      <DiceTable roomCode={room.roomCode} />
+      <DiceTable
+        roomCode={room.roomCode}
+        endpoint={isSupabaseConfigured() ? undefined : "/api/solo/roll"}
+      />
     </PageShell>
   );
 }

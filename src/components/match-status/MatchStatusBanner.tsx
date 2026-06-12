@@ -25,16 +25,16 @@ export function MatchStatusBanner({
   return (
     <div
       className={clsx(
-        "rounded-2xl border px-5 py-4",
+        "rounded-2xl border px-5 py-4 shadow-[inset_0_1px_rgba(255,255,255,0.04)]",
         phase === "resolved"
           ? "border-emerald-500/30 bg-emerald-950/30"
-          : "border-white/10 bg-zinc-900/60",
+          : "border-amber-200/10 bg-gradient-to-r from-amber-400/[0.06] to-transparent",
       )}
     >
-      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
+      <p className="text-[9px] font-bold uppercase tracking-[0.25em] text-amber-300/55">
         Match status
       </p>
-      <p className="mt-2 text-lg font-medium text-zinc-50">
+      <p className="mt-2 text-lg font-medium text-stone-50">
         {message ?? defaultMessage}
       </p>
     </div>

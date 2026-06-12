@@ -19,7 +19,7 @@ export const metadata: Metadata = {
     template: `%s · ${appName}`,
   },
   description:
-    "Real-time social multiplayer dice rooms with a closed-loop coin economy, rankings, cosmetics, and creator-hosted experiences. Virtual coins only — no cash-out.",
+    "A premium social dice experience with live rooms, cinematic rolls, rankings, cosmetics, and creator-hosted tables. Virtual coins only — no cash-out.",
 };
 
 export default function RootLayout({
@@ -32,7 +32,7 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-zinc-950 text-zinc-50">
+      <body className="flex min-h-full flex-col bg-[#050705] text-stone-50">
         {children}
       </body>
     </html>

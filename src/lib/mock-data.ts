@@ -2,12 +2,12 @@ import type { RoomListItem } from "@/types/rooms";
 import type { CosmeticItem } from "@/components/cosmetics/CosmeticCard";
 import type { LeaderboardRow } from "@/components/leaderboard/LeaderboardList";
 
-/** Placeholder data until Supabase queries wire up. */
+/** Rich demo data used when Supabase is not configured. */
 export const mockRooms: RoomListItem[] = [
   {
     id: "1",
     roomCode: "GOLD-42",
-    mode: "classic",
+    mode: "Classic",
     status: "waiting",
     entryFee: 50,
     maxPlayers: 4,
@@ -16,7 +16,7 @@ export const mockRooms: RoomListItem[] = [
   {
     id: "2",
     roomCode: "VIP-909",
-    mode: "classic",
+    mode: "High Roller",
     status: "in_progress",
     entryFee: 200,
     maxPlayers: 6,

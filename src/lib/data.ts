@@ -1,7 +1,7 @@
 import type { CosmeticItem } from "@/components/cosmetics/CosmeticCard";
-import type { LeaderboardRow } from "@/components/leaderboard/LeaderboardList";
 import type { RoomListItem } from "@/types/rooms";
 import { createClient } from "@/lib/supabase/server";
+import { mockCosmetics, mockLeaderboard, mockRooms } from "@/lib/mock-data";
 
 type SupabaseClient = NonNullable<Awaited<ReturnType<typeof createClient>>>;
 
@@ -59,7 +59,7 @@ function mapRoom(row: RoomRow, playerCount: number): RoomListItem {
 export async function getPublicRooms(): Promise<RoomListItem[]> {
   const { supabase } = await getSupabaseUser();
   if (!supabase) {
-    return [];
+    return mockRooms;
   }
 
   const { data, error } = await supabase
@@ -84,7 +84,19 @@ export async function getPublicRooms(): Promise<RoomListItem[]> {
 export async function getRoomByCode(roomCode: string): Promise<RoomDetail | null> {
   const { supabase, user } = await getSupabaseUser();
   if (!supabase) {
-    return null;
+    const room = mockRooms.find(
+      (item) =>
+        item.roomCode.toLowerCase() ===
+        decodeURIComponent(roomCode).toLowerCase(),
+    );
+    return room
+      ? {
+          ...room,
+          hostUserId: "demo-host",
+          isPrivate: false,
+          isCurrentUserMember: true,
+        }
+      : null;
   }
 
   const { data, error } = await supabase
@@ -136,7 +148,7 @@ export async function getWalletBalance(userId: string) {
 export async function getCosmetics(userId: string) {
   const { supabase } = await getSupabaseUser();
   if (!supabase) {
-    return { items: [] as CosmeticItem[], ownedIds: new Set<string>() };
+    return { items: mockCosmetics, ownedIds: new Set<string>() };
   }
 
   const [cosmeticsResult, ownedResult] = await Promise.all([
@@ -168,7 +180,10 @@ export async function getCosmetics(userId: string) {
 export async function getDailyLeaderboard(currentUserId?: string) {
   const { supabase } = await getSupabaseUser();
   if (!supabase) {
-    return [] as LeaderboardRow[];
+    return mockLeaderboard.map((row) => ({
+      ...row,
+      highlight: row.highlight || row.username === "RoomHost",
+    }));
   }
 
   const today = new Date().toISOString().slice(0, 10);

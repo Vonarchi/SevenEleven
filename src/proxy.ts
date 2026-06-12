@@ -4,6 +4,7 @@ import { getSessionFromMiddleware } from "@/lib/supabase/middleware";
 
 const PROTECTED_PREFIXES = [
   "/lobby",
+  "/solo",
   "/rooms",
   "/store",
   "/leaderboard",
