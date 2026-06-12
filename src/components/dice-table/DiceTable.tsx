@@ -3,6 +3,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
+import styles from "./DiceTable.module.css";
 
 type Outcome =
   | { phase: "opening"; kind: "win" | "loss"; reason: string }
@@ -51,6 +52,37 @@ const pipClasses: Record<string, string> = {
   "bottom-right": "bottom-[22%] right-[22%]",
 };
 
+const dieFaces = [
+  { value: 1, className: styles.front },
+  { value: 6, className: styles.back },
+  { value: 3, className: styles.right },
+  { value: 4, className: styles.left },
+  { value: 2, className: styles.top },
+  { value: 5, className: styles.bottom },
+];
+
+const restingRotations: Record<number, { rotateX: number; rotateY: number }> = {
+  1: { rotateX: -14, rotateY: 18 },
+  2: { rotateX: -104, rotateY: 18 },
+  3: { rotateX: -14, rotateY: -72 },
+  4: { rotateX: -14, rotateY: 108 },
+  5: { rotateX: 76, rotateY: 18 },
+  6: { rotateX: -14, rotateY: 198 },
+};
+
+function PipFace({ value, className }: { value: number; className: string }) {
+  return (
+    <div className={`${styles.face} ${className}`} aria-hidden="true">
+      {pipPositions[value].map((position) => (
+        <span
+          key={position}
+          className={`${styles.pip} ${pipClasses[position]}`}
+        />
+      ))}
+    </div>
+  );
+}
+
 function DiceFace({
   value,
   rolling,
@@ -60,29 +92,79 @@ function DiceFace({
   rolling: boolean;
   delay?: number;
 }) {
+  const resting = restingRotations[value];
+
   return (
-    <motion.div
-      className="relative h-24 w-24 rounded-[1.45rem] border border-white/80 bg-gradient-to-br from-white via-stone-100 to-stone-300 shadow-[inset_0_2px_2px_white,inset_0_-5px_10px_rgba(90,70,35,0.18),0_22px_35px_rgba(0,0,0,0.4)] sm:h-32 sm:w-32 sm:rounded-[1.8rem]"
-      animate={
-        rolling
-          ? {
-              rotate: [0, 90, 190, 300, 360],
-              rotateX: [0, 180, 330, 540, 720],
-              rotateY: [0, -160, -340, -520, -720],
-              y: [0, -42, -18, -5, 0],
-              scale: [1, 0.92, 1.06, 0.98, 1],
-            }
-          : { rotate: 0, rotateX: 0, rotateY: 0, y: 0, scale: 1 }
-      }
-      transition={{ duration: 0.9, delay, ease: [0.2, 0.75, 0.25, 1] }}
+    <div
+      className={styles.scene}
+      role="img"
+      aria-label={`Die showing ${value}`}
     >
-      {pipPositions[value].map((position) => (
-        <span
-          key={position}
-          className={`absolute h-[15%] w-[15%] rounded-full bg-gradient-to-br from-[#1a211e] to-black shadow-[inset_0_1px_2px_rgba(255,255,255,0.2)] ${pipClasses[position]}`}
-        />
-      ))}
-    </motion.div>
+      <motion.div
+        className={styles.dieMotion}
+        animate={
+          rolling
+            ? {
+                y: [0, -46, -24, -7, 0],
+                x: [0, 8, -7, 3, 0],
+                scale: [1, 0.94, 1.05, 0.98, 1],
+                rotateZ: [0, 12, -9, 5, 0],
+              }
+            : { y: 0, x: 0, scale: 1, rotateZ: 0 }
+        }
+        transition={{ duration: 0.9, delay, ease: [0.2, 0.75, 0.25, 1] }}
+      >
+        <motion.div
+          className={styles.cube}
+          animate={
+            rolling
+              ? {
+                  rotateX: [
+                    resting.rotateX,
+                    resting.rotateX + 190,
+                    resting.rotateX + 390,
+                    resting.rotateX + 590,
+                    resting.rotateX + 720,
+                  ],
+                  rotateY: [
+                    resting.rotateY,
+                    resting.rotateY - 170,
+                    resting.rotateY - 350,
+                    resting.rotateY - 540,
+                    resting.rotateY - 720,
+                  ],
+                }
+              : resting
+          }
+          transition={{
+            duration: 0.9,
+            delay,
+            ease: [0.2, 0.75, 0.25, 1],
+          }}
+        >
+          {dieFaces.map((face) => (
+            <PipFace
+              key={face.value}
+              value={face.value}
+              className={face.className}
+            />
+          ))}
+        </motion.div>
+      </motion.div>
+      <motion.span
+        className={styles.shadow}
+        aria-hidden="true"
+        animate={
+          rolling
+            ? {
+                opacity: [0.5, 0.16, 0.28, 0.42, 0.5],
+                scale: [1, 0.62, 0.72, 0.9, 1],
+              }
+            : { opacity: 0.5, scale: 1 }
+        }
+        transition={{ duration: 0.9, delay, ease: "easeOut" }}
+      />
+    </div>
   );
 }
 
