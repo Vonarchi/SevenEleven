@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import styles from "./DiceTable.module.css";
 
@@ -25,6 +25,16 @@ type RollResult = {
 };
 
 type RollHistory = RollResult & { id: number };
+
+type MotionPermissionState = "idle" | "enabled" | "denied" | "unsupported";
+
+type DeviceMotionEventWithPermission = typeof DeviceMotionEvent & {
+  requestPermission?: () => Promise<PermissionState>;
+};
+
+const SHAKE_ROLL_THRESHOLD = 26;
+const SHAKE_COOLDOWN_MS = 1400;
+const SHAKE_IDLE_RESET_MS = 160;
 
 const pipPositions: Record<number, string[]> = {
   1: ["center"],
@@ -203,6 +213,11 @@ function playTone(kind: "roll" | "win" | "loss") {
   oscillator.stop(now + 0.5);
 }
 
+function pulseHaptics(pattern: number | number[]) {
+  if (!("vibrate" in navigator)) return;
+  navigator.vibrate(pattern);
+}
+
 export function DiceTable({
   roomCode,
   endpoint,
@@ -224,6 +239,22 @@ export function DiceTable({
   const [wins, setWins] = useState(0);
   const [streak, setStreak] = useState(0);
   const [soundOn, setSoundOn] = useState(true);
+  const [motionPermission, setMotionPermission] =
+    useState<MotionPermissionState>("idle");
+  const [shakeEnabled, setShakeEnabled] = useState(false);
+  const [shakeIntensity, setShakeIntensity] = useState(0);
+  const [shakeMessage, setShakeMessage] = useState(
+    "Enable phone motion to shake the dice.",
+  );
+  const handleRollRef = useRef<() => void>(() => {});
+  const rollingRef = useRef(false);
+  const lastMotionRef = useRef<{
+    x: number;
+    y: number;
+    z: number;
+    at: number;
+  } | null>(null);
+  const lastShakeAtRef = useRef(0);
 
   useEffect(() => {
     if (!solo) return;
@@ -239,34 +270,41 @@ export function DiceTable({
     }
   }, [solo]);
 
-  function saveStats(nextWins: number, nextStreak: number) {
+  const saveStats = useCallback((nextWins: number, nextStreak: number) => {
     if (!solo) return;
     window.localStorage.setItem(
       "seven-eleven-solo-stats",
       JSON.stringify({ wins: nextWins, streak: nextStreak }),
     );
-  }
+  }, [solo]);
 
-  function resetRound() {
+  const resetRound = useCallback(() => {
     setPoint(null);
     setResult(null);
     setError(null);
     setMessage("New round. Roll 7 or 11 to win on the come-out.");
-  }
+  }, []);
 
-  async function handleRoll() {
+  const handleRoll = useCallback(async () => {
+    if (rolling) return;
+
     if (result) {
       resetRound();
+      setShakeMessage("Round reset. Shake again to roll.");
+      pulseHaptics(16);
       return;
     }
 
     setRolling(true);
     setError(null);
+    setShakeIntensity(0);
+    setShakeMessage("Dice are flying across the felt.");
     setDice({
       dieOne: 1 + Math.floor(Math.random() * 6),
       dieTwo: 1 + Math.floor(Math.random() * 6),
     });
     if (soundOn) playTone("roll");
+    pulseHaptics(24);
 
     try {
       const responsePromise = fetch(
@@ -309,11 +347,13 @@ export function DiceTable({
           setResult("win");
           saveStats(nextWins, nextStreak);
           if (soundOn) playTone("win");
+          pulseHaptics([30, 45, 55]);
         } else if (payload.outcome.kind === "loss") {
           setStreak(0);
           setResult("loss");
           saveStats(wins, 0);
           if (soundOn) playTone("loss");
+          pulseHaptics(80);
         }
       }
     } catch (err) {
@@ -322,8 +362,122 @@ export function DiceTable({
       );
     } finally {
       setRolling(false);
+      setShakeMessage("Shake again when you are ready.");
     }
+  }, [
+    endpoint,
+    point,
+    resetRound,
+    result,
+    rolling,
+    roomCode,
+    saveStats,
+    soundOn,
+    streak,
+    wins,
+  ]);
+
+  useEffect(() => {
+    rollingRef.current = rolling;
+  }, [rolling]);
+
+  useEffect(() => {
+    handleRollRef.current = () => {
+      void handleRoll();
+    };
+  }, [handleRoll]);
+
+  async function enableShakeToRoll() {
+    if (!("DeviceMotionEvent" in window)) {
+      setMotionPermission("unsupported");
+      setShakeMessage("Motion controls are not available in this browser.");
+      return;
+    }
+
+    const MotionEventClass =
+      DeviceMotionEvent as DeviceMotionEventWithPermission;
+
+    if (typeof MotionEventClass.requestPermission === "function") {
+      try {
+        const permission = await MotionEventClass.requestPermission();
+        if (permission !== "granted") {
+          setMotionPermission("denied");
+          setShakeEnabled(false);
+          setShakeMessage("Motion permission was denied. Use the roll button.");
+          return;
+        }
+      } catch {
+        setMotionPermission("denied");
+        setShakeEnabled(false);
+        setShakeMessage("Motion permission failed. Use the roll button.");
+        return;
+      }
+    }
+
+    lastMotionRef.current = null;
+    lastShakeAtRef.current = 0;
+    setMotionPermission("enabled");
+    setShakeEnabled(true);
+    setShakeMessage("Shake the phone like real dice in your hand.");
+    pulseHaptics(18);
   }
+
+  useEffect(() => {
+    if (!shakeEnabled || motionPermission !== "enabled") return;
+
+    let resetTimer: ReturnType<typeof window.setTimeout> | null = null;
+
+    function onDeviceMotion(event: DeviceMotionEvent) {
+      const acceleration =
+        event.accelerationIncludingGravity ?? event.acceleration;
+      if (!acceleration) return;
+
+      const x = acceleration.x ?? 0;
+      const y = acceleration.y ?? 0;
+      const z = acceleration.z ?? 0;
+      const now = Date.now();
+      const previous = lastMotionRef.current;
+      lastMotionRef.current = { x, y, z, at: now };
+
+      if (!previous || now - previous.at > SHAKE_IDLE_RESET_MS) return;
+
+      const delta =
+        Math.abs(x - previous.x) +
+        Math.abs(y - previous.y) +
+        Math.abs(z - previous.z);
+      const intensity = Math.min(100, Math.round((delta / 38) * 100));
+      setShakeIntensity((current) => Math.max(current * 0.72, intensity));
+
+      if (resetTimer) {
+        window.clearTimeout(resetTimer);
+      }
+      resetTimer = window.setTimeout(() => setShakeIntensity(0), 260);
+
+      if (
+        delta >= SHAKE_ROLL_THRESHOLD &&
+        now - lastShakeAtRef.current > SHAKE_COOLDOWN_MS
+      ) {
+        if (rollingRef.current) {
+          setShakeMessage("Dice are already in motion.");
+          return;
+        }
+
+        lastShakeAtRef.current = now;
+        setShakeMessage("Shake detected. Rolling...");
+        pulseHaptics([18, 28, 18]);
+        handleRollRef.current();
+      }
+    }
+
+    window.addEventListener("devicemotion", onDeviceMotion);
+
+    return () => {
+      window.removeEventListener("devicemotion", onDeviceMotion);
+      if (resetTimer) {
+        window.clearTimeout(resetTimer);
+      }
+    };
+  }, [motionPermission, shakeEnabled]);
 
   return (
     <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_18rem]">
@@ -351,6 +505,26 @@ export function DiceTable({
               aria-label={soundOn ? "Mute table sounds" : "Enable table sounds"}
             >
               Sound {soundOn ? "on" : "off"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (shakeEnabled) {
+                  setShakeEnabled(false);
+                  setShakeIntensity(0);
+                  setShakeMessage("Shake controls are paused.");
+                  return;
+                }
+                void enableShakeToRoll();
+              }}
+              className={`rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-wider transition ${
+                shakeEnabled
+                  ? "border-emerald-300/40 bg-emerald-400/10 text-emerald-100"
+                  : "border-white/10 bg-white/5 text-stone-400 hover:text-stone-100"
+              }`}
+              aria-pressed={shakeEnabled}
+            >
+              Shake {shakeEnabled ? "on" : "off"}
             </button>
           </div>
         </div>
@@ -433,6 +607,41 @@ export function DiceTable({
                     ? `Roll for ${point}`
                     : "Roll the dice"}
             </Button>
+
+            <div className="mt-5 w-full max-w-md rounded-2xl border border-white/[0.08] bg-black/25 p-4 text-center backdrop-blur">
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-left">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-amber-300/70">
+                    Shake to roll
+                  </p>
+                  <p className="mt-1 text-xs text-stone-400">{shakeMessage}</p>
+                </div>
+                <span
+                  className={`h-3 w-3 shrink-0 rounded-full ${
+                    shakeEnabled
+                      ? "animate-pulse bg-emerald-300 shadow-[0_0_14px_rgba(110,231,183,0.9)]"
+                      : motionPermission === "denied" ||
+                          motionPermission === "unsupported"
+                        ? "bg-red-300"
+                        : "bg-stone-600"
+                  }`}
+                  aria-hidden="true"
+                />
+              </div>
+              <div
+                className="mt-3 h-2 overflow-hidden rounded-full bg-white/[0.08]"
+                aria-hidden="true"
+              >
+                <motion.div
+                  className="h-full rounded-full bg-gradient-to-r from-emerald-300 via-amber-300 to-red-300"
+                  animate={{ width: `${shakeIntensity}%` }}
+                  transition={{ duration: 0.16, ease: "easeOut" }}
+                />
+              </div>
+              <p className="mt-2 text-[10px] uppercase tracking-[0.18em] text-stone-600">
+                Button stays active as fallback
+              </p>
+            </div>
           </div>
         </div>
       </section>
