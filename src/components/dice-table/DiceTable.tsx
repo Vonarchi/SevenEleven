@@ -425,7 +425,7 @@ export function DiceTable({
   useEffect(() => {
     if (!shakeEnabled || motionPermission !== "enabled") return;
 
-    let resetTimer: ReturnType<typeof window.setTimeout> | null = null;
+    let resetTimer: number | null = null;
 
     function onDeviceMotion(event: DeviceMotionEvent) {
       const acceleration =
